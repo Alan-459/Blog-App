@@ -104,6 +104,38 @@ app.post('/post',uploadMiddleware.single('file'), async (req,res) => {
     
 });
 
+app.put('/post', uploadMiddleware.single('file'), async (req, res) => {
+   let newPath = null;
+    if(req.file) {
+    const {originalname,path,destination,filename} = req.file;
+    const parts = originalname.split('.');
+    const ext = parts[parts.length - 1];
+    newPath = destination+filename+'.'+ext;
+    console.log(newPath);
+    fs.renameSync(path, newPath); 
+    }
+
+    const{token} = req.cookies;
+    jwt.verify(token,secret,{},async (error,info) => {
+        if(error) throw error;
+        const {id, title, summary, content} = req.body;
+        const postDoc = await Post.findById(id);
+        const isAuthor = JSON.stringify(postDoc.author) === JSON.stringify(info.id);
+        if(!isAuthor) {
+         return res.status(400).json('you are not the author');
+         }
+         await postDoc.updateOne({
+            title,
+            summary,
+            content,
+            cover: newPath ? newPath : postDoc.cover
+         });
+        
+  
+    res.json(postDoc);
+    });
+});
+
 app.get('/post', async (req, res) => {
     res.json(await Post.find()
     .populate('author', ['username'])
@@ -119,8 +151,6 @@ app.get('/post/:id', async (req,res) => {
 })
 
 app.listen(4000);
-// USername and password for mongodb atlas 
-//alan05ja:WJn94dPAlF9GgiOE
-//mongodb+srv://alan05ja:<mXddSD3YCg7wlVb7>@cluster0.j3mkqv1.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
+
 
 
