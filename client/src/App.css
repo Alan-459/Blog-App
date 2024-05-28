@@ -90,7 +90,7 @@ input{
 }
 
 button{
-  width: 100%;
+  width: 20%;
   display: block;
   background-color: #333;
   border: 0;
@@ -98,6 +98,7 @@ button{
   border-radius: 5px;
   padding: 7px 0;
   cursor: pointer;
+  transition: background-color 0.3s;
 }
 
 form.login h1, form.register h1{
@@ -163,4 +164,26 @@ div.post-page a.delete-btn{
 }
 a svg{
   height:20px;
+}
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+}
+
+
+.pagination button:hover {
+  background-color: #000408;
+}
+
+.pagination button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.pagination span {
+  margin: 0 10px;
+  font-size: 1.2em;
 }

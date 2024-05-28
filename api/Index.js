@@ -137,12 +137,28 @@ app.put('/post', uploadMiddleware.single('file'), async (req, res) => {
 });
 
 app.get('/post', async (req, res) => {
-    res.json(await Post.find()
-    .populate('author', ['username'])
-    .sort({createdAt: -1})
-    .limit(20)
-);
-})
+    const { page = 1, limit = 3} = req.query; // Get page and limit from query parameters, default to page 1 and limit 10
+
+    try {
+        const posts = await Post.find()
+            .populate('author', ['username'])
+            .sort({ createdAt: -1 })
+            .skip((page - 1) * limit) // Skip the number of documents based on the current page
+            .limit(Number(limit)); // Limit the number of documents
+
+        const totalPosts = await Post.countDocuments(); // Total number of documents
+
+        res.json({
+            posts,
+            totalPages: Math.ceil(totalPosts / limit), // Total number of pages
+            currentPage: Number(page),
+        });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: 'Something went wrong' });
+    }
+});
+
 
 app.get('/post/:id', async (req,res) => {
     const {id} = req.params;
