@@ -150,6 +150,25 @@ app.get('/post/:id', async (req,res) => {
     res.json(postDoc);
 })
 
+app.delete('/post/:id', async (req, res) => {
+    const { id } = req.params;
+    const { token } = req.cookies;
+    try {
+        const decoded = jwt.verify(token, secret);
+        const postDoc = await Post.findById(id);
+        if (postDoc.author.toString() === decoded.id) {
+            await postDoc.deleteOne();
+            res.json({ success: true });
+        } else {
+            res.status(403).json({ error: 'You are not the author of this post' });
+        }
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ error: 'Something went wrong' });
+    }
+});
+
+
 app.listen(4000);
 
 
