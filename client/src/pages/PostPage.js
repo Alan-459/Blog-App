@@ -1,12 +1,14 @@
 import { formatISO9075 } from "date-fns";
 import { useContext, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { UserContext } from "../UserContext";
 
 export default function PostPage() {
     const [postInfo, setPostInfo] = useState(null);
     const { id } = useParams();
     const { userInfo } = useContext(UserContext);
+    const navigate = useNavigate();
+
     useEffect(() => {
         fetch(`http://localhost:4000/post/${id}`)
             .then(response => {
@@ -14,7 +16,20 @@ export default function PostPage() {
                     setPostInfo(postInfo);
                 });
             });
-    }, []);
+    }, [id]);
+
+    const handleDelete = async () => {
+        const response = await fetch(`http://localhost:4000/post/${id}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        if (response.ok) {
+            navigate('/');
+        } else {
+            console.error("Failed to delete the post");
+        }
+    };
+
     if (!postInfo) return '';
     return (
         <div className="post-page">
@@ -29,8 +44,14 @@ export default function PostPage() {
                         </svg>
 
                         Edit this post</Link>
+                        <div style={{margin: "2px"}}><Link className="delete-btn" onClick={handleDelete}>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18.75V8.25A2.25 2.25 0 0 1 8.25 6h7.5A2.25 2.25 0 0 1 18 8.25v10.5M9 10h6M9 14h6M10.5 18H13.5M10.5 2.25H13.5M9 4.5h6M10.5 4.5v-2.25H13.5V4.5" />
+                        </svg>
+                            Delete</Link></div>
                 </div>
             )}
+            
             <div className="image">
                 <img src={`http://localhost:4000/${postInfo.cover}`}></img>
             </div>
