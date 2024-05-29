@@ -22,6 +22,28 @@ app.use('/uploads', express.static(__dirname + '/uploads'));
 
 mongoose.connect("mongodb+srv://alan05ja:mXddSD3YCg7wlVb7@cluster0.j3mkqv1.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0");
 
+//Caching logic
+const NodeCache = require('node-cache');
+const cache = new NodeCache({ stdTTL: 100, checkperiod: 120 });
+
+function cacheMiddleware(req, res, next) {
+    const key = req.originalUrl || req.url;
+    const cachedResponse = cache.get(key);
+    if (cachedResponse) {
+        console.log(`Cache hit for key: ${key}`);
+        return res.json(cachedResponse);
+    }
+    console.log(`Cache miss for key: ${key}`);
+    res.sendResponse = res.json;
+    res.json = (body) => {
+        cache.set(key, body);
+        res.sendResponse(body);
+    };
+    next();
+}
+
+
+
 app.post('/register',async (req,res) => {
     //res.json("Test data");
 
@@ -97,6 +119,7 @@ app.post('/post',uploadMiddleware.single('file'), async (req,res) => {
         cover: newPath,
         author:info.id
     });
+    cache.del('/post');
     res.json(postDoc);
     });
 
@@ -131,12 +154,14 @@ app.put('/post', uploadMiddleware.single('file'), async (req, res) => {
             cover: newPath ? newPath : postDoc.cover
          });
         
+        cache.del('/post');
+        cache.del(`/post/${id}`);
   
     res.json(postDoc);
     });
 });
 
-app.get('/post', async (req, res) => {
+app.get('/post', cacheMiddleware, async (req, res) => {
     const { page = 1, limit = 3} = req.query; // Get page and limit from query parameters, default to page 1 and limit 10
 
     try {
@@ -160,7 +185,7 @@ app.get('/post', async (req, res) => {
 });
 
 
-app.get('/post/:id', async (req,res) => {
+app.get('/post/:id', cacheMiddleware, async (req,res) => {
     const {id} = req.params;
     const postDoc = await Post.findById(id).populate('author',['username']);
     res.json(postDoc);
@@ -174,6 +199,8 @@ app.delete('/post/:id', async (req, res) => {
         const postDoc = await Post.findById(id);
         if (postDoc.author.toString() === decoded.id) {
             await postDoc.deleteOne();
+            cache.del('/post');
+            cache.del(`/post/${id}`);
             res.json({ success: true });
         } else {
             res.status(403).json({ error: 'You are not the author of this post' });
