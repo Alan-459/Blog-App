@@ -9,7 +9,7 @@ export default function IndexPage() {
     const [totalPages, setTotalPages] = useState(1);
 
     useEffect(() => {
-        fetch(`http://localhost:4000/post?page=${page}&limit=3`).then(response => {
+        fetch(`http://localhost:4000/post?page=${page}&limit=10`).then(response => {
             response.json().then(data => {
                 setPosts(data.posts);
                 setFilteredPosts(data.posts);

@@ -65,8 +65,9 @@ div.post p.info{
   gap: 10px;
 }
 
-div.post p.info a.author{
+div.post p.info p.author{
   color:#333;
+  margin:0%;
 }
 
 div.post p.summary{

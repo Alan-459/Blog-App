@@ -179,7 +179,7 @@ app.put('/post', uploadMiddleware.single('file'), async (req, res) => {
 });
 
 app.get('/post', cacheMiddleware, async (req, res) => {
-    const { page = 1, limit = 3} = req.query; // Get page and limit from query parameters, default to page 1 and limit 10
+    const { page = 1, limit = 10} = req.query; // Get page and limit from query parameters, default to page 1 and limit 10
 
     try {
         const posts = await Post.find()
