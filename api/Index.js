@@ -12,10 +12,27 @@ const multer = require('multer');
 const uploadMiddleware = multer({ dest: 'uploads/' });
 const fs = require('fs');
 const app = express();
+const compression = require('compression');
 
 
 app.use(cors({credentials:true, origin:'http://localhost:3000'}));
-//
+
+app.use((req, res, next) => {
+    console.log('Request URL:', req.url);
+    next();
+});
+
+app.use(compression());
+
+app.use((req, res, next) => {
+    res.on('finish', () => {
+        console.log('Response Headers:', res.getHeaders());
+    });
+    next();
+});
+
+
+
 app.use(express.json());
 app.use(cookieParser());
 app.use('/uploads', express.static(__dirname + '/uploads'));
