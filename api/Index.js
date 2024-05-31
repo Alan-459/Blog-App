@@ -18,7 +18,7 @@ const compression = require('compression');
 app.use(cors({credentials:true, origin:'http://localhost:3000'}));
 
 app.use((req, res, next) => {
-    console.log('Request URL:', req.url);
+    //console.log('Request URL:', req.url);
     next();
 });
 
@@ -26,7 +26,7 @@ app.use(compression());
 
 app.use((req, res, next) => {
     res.on('finish', () => {
-        console.log('Response Headers:', res.getHeaders());
+        //cconsole.log('Response Headers:', res.getHeaders());
     });
     next();
 });
@@ -178,21 +178,51 @@ app.put('/post', uploadMiddleware.single('file'), async (req, res) => {
     });
 });
 
+// app.get('/post', cacheMiddleware, async (req, res) => {
+//     const { page = 1, limit = 10} = req.query; // Get page and limit from query parameters, default to page 1 and limit 10
+
+//     try {
+//         const posts = await Post.find()
+//             .populate('author', ['username'])
+//             .sort({ createdAt: -1 })
+//             .skip((page - 1) * limit) // Skip the number of documents based on the current page
+//             .limit(Number(limit)); // Limit the number of documents
+
+//         const totalPosts = await Post.countDocuments(); // Total number of documents
+
+//         res.json({
+//             posts,
+//             totalPages: Math.ceil(totalPosts / limit), // Total number of pages
+//             currentPage: Number(page),
+//         });
+//     } catch (error) {
+//         console.log(error);
+//         res.status(500).json({ error: 'Something went wrong' });
+//     }
+// });
+
+
+
 app.get('/post', cacheMiddleware, async (req, res) => {
-    const { page = 1, limit = 10} = req.query; // Get page and limit from query parameters, default to page 1 and limit 10
+    const { page = 1, limit = 10, search = '' } = req.query; 
 
     try {
-        const posts = await Post.find()
+        // Build search query
+        const searchQuery = search
+            ? { title: { $regex: search, $options: 'i' } } 
+            : {};
+
+        const posts = await Post.find(searchQuery)
             .populate('author', ['username'])
             .sort({ createdAt: -1 })
-            .skip((page - 1) * limit) // Skip the number of documents based on the current page
-            .limit(Number(limit)); // Limit the number of documents
+            .skip((page - 1) * limit) 
+            .limit(Number(limit)); 
 
-        const totalPosts = await Post.countDocuments(); // Total number of documents
+        const totalPosts = await Post.countDocuments(searchQuery); 
 
         res.json({
             posts,
-            totalPages: Math.ceil(totalPosts / limit), // Total number of pages
+            totalPages: Math.ceil(totalPosts / limit), 
             currentPage: Number(page),
         });
     } catch (error) {
