@@ -66,7 +66,7 @@ div.post p.info{
 }
 
 div.post p.info p.author{
-  color:#333;
+  color:#000;
   margin:0%;
 }
 
@@ -138,6 +138,10 @@ div.post-page div.author{
 }
 div.post-page div.content p{
   line-height: 1.6rem;
+}
+
+.error{
+  color: red;
 }
 div.edit-row{
   text-align: center;

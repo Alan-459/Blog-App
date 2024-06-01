@@ -12,7 +12,7 @@ export default function Header(){
         setUserInfo(userInfo);
       });
     });
-  },[]);
+  },[setUserInfo]);
 
   function Logout(){
     fetch('http://localhost:4000/logout',{
@@ -26,12 +26,12 @@ export default function Header(){
   const username = userInfo?.username;  
     return(
         <header>
-        <Link to ="/" className="logo">MyBlog</Link>
+        <Link to ="/" className="logo">Blogify</Link>
         <nav>
           {username && (
             <>
             <Link to ='/create'>Create new post</Link>
-            <a onClick={Logout}>Logout</a>
+            <a href="/" onClick={Logout}>Logout</a>
             </>
           )}
           {!username && (

@@ -1,4 +1,4 @@
-import { formatISO9075 } from "date-fns";
+import { format } from "date-fns";
 import { useContext, useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { UserContext } from "../UserContext";
@@ -34,7 +34,7 @@ export default function PostPage() {
     return (
         <div className="post-page">
             <h1>{postInfo.title}</h1>
-            <time>{formatISO9075(new Date(postInfo.createdAt))}</time>
+            <time style={{color: "#333"}}>{format(new Date(postInfo.createdAt), 'MMM dd, yyyy')}</time>
             <div className="author">by @{postInfo.author.username}</div>
             {userInfo.id === postInfo.author._id && (
                 <div className="edit-row">
