@@ -13,7 +13,7 @@ const uploadMiddleware = multer({ dest: 'uploads/' });
 const fs = require('fs');
 const app = express();
 const compression = require('compression');
-
+const mySecret = "admin1234";
 
 app.use(cors({credentials:true, origin:'http://localhost:3000'}));
 
@@ -37,8 +37,8 @@ app.use(express.json());
 app.use(cookieParser());
 app.use('/uploads', express.static(__dirname + '/uploads'));
 
-mongoose.connect("mongodb+srv://alan05ja:mXddSD3YCg7wlVb7@cluster0.j3mkqv1.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0");
-
+mongoose.connect("mongodb+srv://admin:W2mOXrsPtccqmp8H@blog-app.xwzinsw.mongodb.net/?retryWrites=true&w=majority&appName=Blog-App");
+//W2mOXrsPtccqmp8H
 //Caching logic
 const NodeCache = require('node-cache');
 const cache = new NodeCache({ stdTTL: 100, checkperiod: 120 });
@@ -59,16 +59,27 @@ function cacheMiddleware(req, res, next) {
     next();
 }
 
+function checkAdminAccess(req, res, next){
+    
+}
+
 
 
 app.post('/register',async (req,res) => {
     //res.json("Test data");
-
-    const {username,password} = req.body;
+    let role ="";
+    const {username,password,secretKey} = req.body;
     try{
+        if(secretKey&&(secretKey===mySecret)){
+            role = "admin";
+        }
+        else{
+            role = "user";
+        }
         const userData = await User.create({
             username,
             password: bcrypt.hashSync(password,salt),
+            role
         });
         res.json(userData);
     }
@@ -85,8 +96,9 @@ app.post('/login',async (req,res) => {
         const userDoc = await User.findOne({username:username});
         const passOk = bcrypt.compareSync(password, userDoc.password);
         if(passOk){
-            jwt.sign({username,id:userDoc._id},secret,{},(error,token) => {
+            jwt.sign({username,id:userDoc._id,role:userDoc.role},secret,{},(error,token) => {
                 if(error) throw error;
+                console.log("Hello");
                 res.cookie('token',token).json({
                     id: userDoc._id,
                     username
@@ -114,6 +126,7 @@ app.get('/profile',(req,res) => {
 });
 
 app.post('/logout',(req,res) => {
+    cache.flushAll();
     res.cookie('token', '').json('ok');
 });
 
@@ -161,9 +174,13 @@ app.put('/post', uploadMiddleware.single('file'), async (req, res) => {
         const {id, title, summary, content} = req.body;
         const postDoc = await Post.findById(id);
         const isAuthor = JSON.stringify(postDoc.author) === JSON.stringify(info.id);
-        if(!isAuthor) {
-         return res.status(400).json('you are not the author');
-         }
+        console.log(info.role);
+        if(info.role!=='admin'){
+            if(!isAuthor){
+                return res.status(400).json('you are not the author or you dont have admin privilege');
+            }
+        }
+        
          await postDoc.updateOne({
             title,
             summary,
@@ -244,7 +261,7 @@ app.delete('/post/:id', async (req, res) => {
     try {
         const decoded = jwt.verify(token, secret);
         const postDoc = await Post.findById(id);
-        if (postDoc.author.toString() === decoded.id) {
+        if (postDoc.author.toString() === decoded.id|| decoded.role === 'admin') {
             await postDoc.deleteOne();
             cache.del('/post');
             cache.del(`/post/${id}`);

@@ -8,6 +8,7 @@ export default function IndexPage() {
     const [totalPages, setTotalPages] = useState(1);
 
     useEffect(() => {
+        
         fetchPosts();
     }, [page, searchTerm]);
 
