@@ -32,6 +32,7 @@ export default function AdminRegisterPage() {
       headers: { 'Content-Type': 'application/json' },
     });
     if (response.status === 200) {
+      console.log(response.body);
       alert("Registration Successful");
       navigate('/');
     } else {
@@ -54,6 +55,7 @@ export default function AdminRegisterPage() {
           type="text"
           placeholder="SecretKey"
           value={secretKey}
+          required
           onChange={ev => setSecretKey(ev.target.value)}
         />
         <input

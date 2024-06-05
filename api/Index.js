@@ -76,12 +76,17 @@ app.post('/register',async (req,res) => {
     let role ="";
     const {username,password,secretKey} = req.body;
     try{
+        
         if(secretKey&&(secretKey===mySecret)){
             role = "admin";
         }
-        else{
+        else if(secretKey && secretKey!==mySecret){
+            return res.status(400).json("Invalid Secret");
+        }
+        else if(!secretKey){
             role = "user";
         }
+        
         const userData = await User.create({
             username,
             password: bcrypt.hashSync(password,salt),
