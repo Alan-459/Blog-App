@@ -38,7 +38,7 @@ app.use(cookieParser());
 app.use('/uploads', express.static(__dirname + '/uploads'));
 
 mongoose.connect("mongodb+srv://alan05ja:mXddSD3YCg7wlVb7@cluster0.j3mkqv1.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0");
-
+//W2mOXrsPtccqmp8H
 //Caching logic
 const NodeCache = require('node-cache');
 const cache = new NodeCache({ stdTTL: 100, checkperiod: 120 });
@@ -59,16 +59,38 @@ function cacheMiddleware(req, res, next) {
     next();
 }
 
+const clearPostCache = () => {
+    const keys = cache.keys();
+    keys.forEach((key) => {
+        if (key.startsWith('/post')) {
+            console.log(`Clearing cache for key: ${key}`);
+            cache.del(key);
+        }
+    });
+};
+
 
 
 app.post('/register',async (req,res) => {
     //res.json("Test data");
-
-    const {username,password} = req.body;
+    let role ="";
+    const {username,password,secretKey ="admin1234"} = req.body;
     try{
+        
+        if(secretKey&&(secretKey===mySecret)){
+            role = "admin";
+        }
+        else if(secretKey && secretKey!==mySecret){
+            return res.status(400).json("Invalid Secret");
+        }
+        else if(!secretKey){
+            role = "user";
+        }
+        
         const userData = await User.create({
             username,
             password: bcrypt.hashSync(password,salt),
+            role
         });
         res.json(userData);
     }
@@ -85,8 +107,9 @@ app.post('/login',async (req,res) => {
         const userDoc = await User.findOne({username:username});
         const passOk = bcrypt.compareSync(password, userDoc.password);
         if(passOk){
-            jwt.sign({username,id:userDoc._id},secret,{},(error,token) => {
+            jwt.sign({username,id:userDoc._id,role:userDoc.role},secret,{},(error,token) => {
                 if(error) throw error;
+                console.log("Hello");
                 res.cookie('token',token).json({
                     id: userDoc._id,
                     username
@@ -114,6 +137,7 @@ app.get('/profile',(req,res) => {
 });
 
 app.post('/logout',(req,res) => {
+    cache.flushAll();
     res.cookie('token', '').json('ok');
 });
 
@@ -136,7 +160,8 @@ app.post('/post',uploadMiddleware.single('file'), async (req,res) => {
         cover: newPath,
         author:info.id
     });
-    cache.del('/post');
+    //cache.del('/post');
+    clearPostCache();
     res.json(postDoc);
     });
 
@@ -161,18 +186,23 @@ app.put('/post', uploadMiddleware.single('file'), async (req, res) => {
         const {id, title, summary, content} = req.body;
         const postDoc = await Post.findById(id);
         const isAuthor = JSON.stringify(postDoc.author) === JSON.stringify(info.id);
-        if(!isAuthor) {
-         return res.status(400).json('you are not the author');
-         }
+        console.log(info.role);
+        if(info.role!=='admin'){
+            if(!isAuthor){
+                return res.status(400).json('you are not the author or you dont have admin privilege');
+            }
+        }
+        
          await postDoc.updateOne({
             title,
             summary,
             content,
             cover: newPath ? newPath : postDoc.cover
          });
-        
-        cache.del('/post');
-        cache.del(`/post/${id}`);
+        console.log(`Clearing cache for /post and /post/${id}`);
+        // cache.del('/post');
+        // cache.del(`/post/${id}`);
+        clearPostCache();
   
     res.json(postDoc);
     });
@@ -244,10 +274,12 @@ app.delete('/post/:id', async (req, res) => {
     try {
         const decoded = jwt.verify(token, secret);
         const postDoc = await Post.findById(id);
-        if (postDoc.author.toString() === decoded.id) {
+        if (postDoc.author.toString() === decoded.id|| decoded.role === 'admin') {
             await postDoc.deleteOne();
-            cache.del('/post');
-            cache.del(`/post/${id}`);
+            console.log(`Clearing cache for /post and /post/${id}`);
+            // cache.del('/post');
+            // cache.del(`/post/${id}`);
+            clearPostCache();
             res.json({ success: true });
         } else {
             res.status(403).json({ error: 'You are not the author of this post' });
