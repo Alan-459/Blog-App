@@ -18,7 +18,6 @@ function App() {
       <Route index element = {<IndexPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />}/>
-      <Route path="/adminRegister" element={<AdminRegisterPage />}/>
       <Route path="/create" element={<CreatePost />}/>
       <Route path="/post/:id" element={<PostPage />}/>
       <Route path='/edit/:id' element={<EditPost />} />

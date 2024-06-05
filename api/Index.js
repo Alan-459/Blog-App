@@ -13,7 +13,7 @@ const uploadMiddleware = multer({ dest: 'uploads/' });
 const fs = require('fs');
 const app = express();
 const compression = require('compression');
-const mySecret = "admin1234";
+
 
 app.use(cors({credentials:true, origin:'http://localhost:3000'}));
 
@@ -74,7 +74,7 @@ const clearPostCache = () => {
 app.post('/register',async (req,res) => {
     //res.json("Test data");
     let role ="";
-    const {username,password,secretKey} = req.body;
+    const {username,password,secretKey ="admin1234"} = req.body;
     try{
         
         if(secretKey&&(secretKey===mySecret)){

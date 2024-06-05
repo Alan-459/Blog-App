@@ -38,7 +38,6 @@ export default function Header(){
             <>
             <Link to ="/login">Login</Link>
             <Link to ="/register">UserRegister</Link>
-            <Link to ="/adminRegister">AdminRegister</Link>
             </>
           )}
         </nav>
