@@ -59,9 +59,15 @@ function cacheMiddleware(req, res, next) {
     next();
 }
 
-function checkAdminAccess(req, res, next){
-    
-}
+const clearPostCache = () => {
+    const keys = cache.keys();
+    keys.forEach((key) => {
+        if (key.startsWith('/post')) {
+            console.log(`Clearing cache for key: ${key}`);
+            cache.del(key);
+        }
+    });
+};
 
 
 
@@ -149,7 +155,8 @@ app.post('/post',uploadMiddleware.single('file'), async (req,res) => {
         cover: newPath,
         author:info.id
     });
-    cache.del('/post');
+    //cache.del('/post');
+    clearPostCache();
     res.json(postDoc);
     });
 
@@ -187,9 +194,10 @@ app.put('/post', uploadMiddleware.single('file'), async (req, res) => {
             content,
             cover: newPath ? newPath : postDoc.cover
          });
-        
-        cache.del('/post');
-        cache.del(`/post/${id}`);
+        console.log(`Clearing cache for /post and /post/${id}`);
+        // cache.del('/post');
+        // cache.del(`/post/${id}`);
+        clearPostCache();
   
     res.json(postDoc);
     });
@@ -263,8 +271,10 @@ app.delete('/post/:id', async (req, res) => {
         const postDoc = await Post.findById(id);
         if (postDoc.author.toString() === decoded.id|| decoded.role === 'admin') {
             await postDoc.deleteOne();
-            cache.del('/post');
-            cache.del(`/post/${id}`);
+            console.log(`Clearing cache for /post and /post/${id}`);
+            // cache.del('/post');
+            // cache.del(`/post/${id}`);
+            clearPostCache();
             res.json({ success: true });
         } else {
             res.status(403).json({ error: 'You are not the author of this post' });
