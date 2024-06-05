@@ -37,7 +37,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use('/uploads', express.static(__dirname + '/uploads'));
 
-mongoose.connect("mongodb+srv://admin:W2mOXrsPtccqmp8H@blog-app.xwzinsw.mongodb.net/?retryWrites=true&w=majority&appName=Blog-App");
+mongoose.connect("mongodb+srv://alan05ja:mXddSD3YCg7wlVb7@cluster0.j3mkqv1.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0");
 //W2mOXrsPtccqmp8H
 //Caching logic
 const NodeCache = require('node-cache');
