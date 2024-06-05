@@ -73,19 +73,9 @@ const clearPostCache = () => {
 
 app.post('/register',async (req,res) => {
     //res.json("Test data");
-    let role ="";
-    const {username,password,secretKey ="admin1234"} = req.body;
+    let role ="user";
+    const {username,password} = req.body;
     try{
-        
-        if(secretKey&&(secretKey===mySecret)){
-            role = "admin";
-        }
-        else if(secretKey && secretKey!==mySecret){
-            return res.status(400).json("Invalid Secret");
-        }
-        else if(!secretKey){
-            role = "user";
-        }
         
         const userData = await User.create({
             username,
