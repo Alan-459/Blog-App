@@ -111,7 +111,8 @@ div.post-page div.image{
   display: flex;
   overflow: hidden;
 }
-div.post-page div.image img{
+
+img{
   object-fit: cover;
   object-position: center center;
   width: 100%;
