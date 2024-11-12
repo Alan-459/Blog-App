@@ -3,6 +3,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const User = require('./models/User');
 const Post = require('./models/Post');
+const Comment = require('./models/Comment');
 const bcrypt = require('bcryptjs');
 const salt = bcrypt.genSaltSync(10);
 const jwt = require('jsonwebtoken');
@@ -16,6 +17,7 @@ const compression = require('compression');
 
 
 app.use(cors({credentials:true, origin:'http://localhost:3000'}));
+
 
 app.use((req, res, next) => {
     //console.log('Request URL:', req.url);
@@ -277,6 +279,91 @@ app.delete('/post/:id', async (req, res) => {
     } catch (error) {
         console.log(error);
         res.status(500).json({ error: 'Something went wrong' });
+    }
+});
+
+app.post('/post/:postId/comment', async (req,res) => {
+    const { postId } = req.params;
+    const { content } = req.body;
+    const { token } = req.cookies;
+    try{
+        const decoded = jwt.verify(token, secret);
+        const userId = decoded.id;
+
+        const comment = await Comment.create({
+            content,
+            author : userId,
+            post: postId
+        });
+        cache.del(`/post/${postId}/comments`);
+        res.json(comment);
+    }catch (error){
+        console.log(error);
+        res.status(500).json({error: "Unable to add comment"});
+    }
+});
+
+app.get('/post/:postId/comment', cacheMiddleware, async (req, res) => {
+    const { postId } = req.params;
+
+    try {
+        const comments = await Comment.find({ post: postId })
+            .populate('author', 'username')
+            .sort({ createdAt: -1 });
+
+        res.json(comments);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Unable to fetch comments' });
+    }
+});
+
+app.put('/comment/:commentId', async (req, res) => {
+    const { commentId } = req.params;
+    const { content } = req.body;
+    const { token } = req.cookies;
+
+    try{
+        const decoded = jwt.verify(token, secret);
+        const userId = decoded.id;
+        const comment = await Comment.findById(commentId);
+        if(!comment){
+            return res.status(404).json({ error: "Comment not found"});
+        }
+
+        if(comment.author.toString() === userId || decoded.role === 'admin'){
+            comment.content = content;
+            await comment.save();
+
+            cache.del(`/post/${comment.post}/comments`);
+            res.json({success: true, comment});
+        }
+        else{
+            res.status(403).json({ error: 'Not authorized to update this comment' });
+        }
+    } catch (error){
+        console.error(error);
+        res.status(500).json({ error: 'Unable to update comment' });
+    }
+});
+
+app.delete('/comment/:commentId', async (req, res) => {
+    const { commentId } = req.params;
+    const { token } = req.cookies;
+
+    try {
+        const decoded = jwt.verify(token, secret);
+        const comment = await Comment.findById(commentId);
+
+        if (comment.author.toString() === decoded.id || decoded.role === 'admin') {
+            await comment.deleteOne();
+            res.json({ success: true });
+        } else {
+            res.status(403).json({ error: 'Not authorized to delete this comment' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Unable to delete comment' });
     }
 });
 
