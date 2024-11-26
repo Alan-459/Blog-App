@@ -75,33 +75,120 @@ const clearPostCache = () => {
 
 app.post('/register',async (req,res) => {
     //res.json("Test data");
-    let role ="user";
-    const {username,password} = req.body;
+    let {username,password,role} = req.body;
+    if(role !== "admin"){
+        role = "user";
+    }
+    // let role ="user";
+   
+    
     try{
-        
+        if(!username || !password){
+            return res.status(400).json({message: "Username and Password are required"});
+        }
+        if(username.length<6){
+            return res.status(400).json({messsage: "The username length should be greater than or equal to 6"});
+        }
+        if(password.length<8){
+            return res.status(400).json({message: "The password length should be greater than or equal to 8"});
+        }
         const userData = await User.create({
             username,
             password: bcrypt.hashSync(password,salt),
             role
         });
-        res.json(userData);
+        res.status(201).json({data: userData, message: "Created User"});
     }
     catch(e){
         console.log(e);
-        res.status(404).json(e);
+        res.status(500).json(e);
     }
    
 });
 
+app.put('/user/:userId',async (req,res) => {
+    const {token} = req.cookies;
+    const {userId} = req.params;
+    const {email,phonenumber} = req.body;
+    try{
+        jwt.verify(token,secret,{},async (error,info) => {
+            if(error){
+                return res.status(401).json({message: "Authentication failed. Please log in again"});
+            }
+            // if(info.role !== "admin"){
+            //     return res.status(403).json({messge:"Not authorized to edit user accounts"});
+            // }
+            const userDoc = await User.findOne({_id: userId});
+           
+            if(!userDoc){
+                return res.status(404).json({message: "User not found for userId:" + userId});
+            }
+            const isAuthor = JSON.stringify(userDoc._id) === JSON.stringify(info.id);
+            if(info.role !== "admin"){
+                if(!isAuthor){
+                    return res.status(403).json('You dont have the privilege to edit the user data');
+                }
+            }
+            await userDoc.updateOne({
+                email,
+                phonenumber
+            });
+            res.json({message: "Updated user data"});
+
+        });
+    }
+    catch(e){
+        console.log(e);
+        res.status(500).json(e);
+    }
+    
+});
+
+app.delete('/user/:userId', async (req,res) => {
+const {token} = req.cookies;
+const {userId} = req.params;
+    try{
+        jwt.verify(token,secret,{},async (error,info) => {
+            if(error){
+                return res.status(401).json({message: "Authentication failed. Please log in again"});
+            }
+        if(info.role !== "admin"){
+          return res.status(403).json({message: "You dont have the privilege to delete user accounts"});
+        }
+        const userDoc = User.findOne({_id: userId});
+        if(!userDoc){
+            return res.status(404).json({message: "User not found"});
+        }
+        if(userDoc.role == "admin"){
+            return res.status(403).json({message: "Admin accounts cant be deleted"});
+        }
+       await userDoc.deleteOne({_id: userId})
+        res.json({message: "Deleted"});
+        })
+    }
+    catch(e){
+        console.log(e);
+        res.status(500).json(e);
+    }
+})
+
+
+
 app.post('/login',async (req,res) => {
     const {username, password} = req.body;
     try{
+        if(!username || !password){
+            return res.status(400).json({message: "Username and Password are required"});
+        }
         const userDoc = await User.findOne({username:username});
+        if(!userDoc){
+            return res.status(404).json({message: "User Not Found"});
+        }
         const passOk = bcrypt.compareSync(password, userDoc.password);
         if(passOk){
             jwt.sign({username,id:userDoc._id,role:userDoc.role},secret,{},(error,token) => {
                 if(error) throw error;
-                console.log("Hello");
+                // console.log("Hello");
                 res.cookie('token',token).json({
                     id: userDoc._id,
                     username
@@ -114,7 +201,7 @@ app.post('/login',async (req,res) => {
     }
     catch(e){
         console.log(e);
-        res.status(404).json(e);
+        res.status(500).json(e);
     }
     
 });
@@ -133,50 +220,59 @@ app.post('/logout',(req,res) => {
     res.cookie('token', '').json('ok');
 });
 
-app.post('/post',uploadMiddleware.single('file'), async (req,res) => {
-    const {originalname,path,destination,filename} = req.file;
-    const parts = originalname.split('.');
-    const ext = parts[parts.length - 1];
-    const newPath = destination+filename+'.'+ext;
-    console.log(newPath);
-    fs.renameSync(path, newPath);
-
+app.post('/post', async (req,res) => {
+    // const {originalname,path,destination,filename} = req.file;
+    // const parts = originalname.split('.');
+    // const ext = parts[parts.length - 1];
+    // const newPath = destination+filename+'.'+ext;
+    // console.log(newPath);
+    // fs.renameSync(path, newPath);
     const{token} = req.cookies;
-    jwt.verify(token,secret,{},async (error,info) => {
-        if(error) throw error;
-        const {title, summary, content} = req.body;
-    const postDoc = await Post.create({
-        title,
-        summary,
-        content,
-        cover: newPath,
-        author:info.id
-    });
-    //cache.del('/post');
-    clearPostCache();
-    res.json(postDoc);
-    });
+    try{
+        jwt.verify(token,secret,{},async (error,info) => {
+            if(error) {
+                return res.status(401).json({message: "Authentication failed. Please log in again"});
+            }
+            const {title, summary, content} = req.body;
+        const postDoc = await Post.create({
+            title,
+            summary,
+            content,
+            cover,
+            author:info.id
+        });
+        //cache.del('/post');
+        clearPostCache();
+        res.json(postDoc);
+        });
+    } catch (e){
+        console.log(e);
+        res.status(500).json(e)
+    }
+    
 
     
     
 });
 
-app.put('/post', uploadMiddleware.single('file'), async (req, res) => {
-   let newPath = null;
-    if(req.file) {
-    const {originalname,path,destination,filename} = req.file;
-    const parts = originalname.split('.');
-    const ext = parts[parts.length - 1];
-    newPath = destination+filename+'.'+ext;
-    console.log(newPath);
-    fs.renameSync(path, newPath); 
-    }
+app.put('/post', async (req, res) => {
+//    let newPath = null;
+//     if(req.file) {
+//     const {originalname,path,destination,filename} = req.file;
+//     const parts = originalname.split('.');
+//     const ext = parts[parts.length - 1];
+//     newPath = destination+filename+'.'+ext;
+//     console.log(newPath);
+//     fs.renameSync(path, newPath); 
+//     }
 
     const{token} = req.cookies;
     jwt.verify(token,secret,{},async (error,info) => {
-        if(error) throw error;
-        const {id, title, summary, content} = req.body;
-        const postDoc = await Post.findById(id);
+        if(error) {
+           return res.status(401).json({message: "Authentication failed. Please log in again"});
+        }
+        const {postId, title, summary, content, cover} = req.body;
+        const postDoc = await Post.findById(postId);
         const isAuthor = JSON.stringify(postDoc.author) === JSON.stringify(info.id);
         console.log(info.role);
         if(info.role!=='admin'){
@@ -189,14 +285,14 @@ app.put('/post', uploadMiddleware.single('file'), async (req, res) => {
             title,
             summary,
             content,
-            cover: newPath ? newPath : postDoc.cover
+            cover: cover ? cover : postDoc.cover
          });
-        console.log(`Clearing cache for /post and /post/${id}`);
+        console.log(`Clearing cache for /post and /post/${postId}`);
         // cache.del('/post');
         // cache.del(`/post/${id}`);
         clearPostCache();
   
-    res.json(postDoc);
+    res.json({message: "Updated the data"});
     });
 });
 
@@ -241,7 +337,7 @@ app.get('/post', cacheMiddleware, async (req, res) => {
             .limit(Number(limit)); 
 
         const totalPosts = await Post.countDocuments(searchQuery); 
-
+        
         res.json({
             posts,
             totalPages: Math.ceil(totalPosts / limit), 
@@ -287,16 +383,22 @@ app.post('/post/:postId/comment', async (req,res) => {
     const { content } = req.body;
     const { token } = req.cookies;
     try{
-        const decoded = jwt.verify(token, secret);
-        const userId = decoded.id;
+        // const decoded = jwt.verify(token, secret);
+        jwt.verify(token,secret,{},async (error,info) => {
+            if(error) {
+                return res.status(401).json({message: "Authentication failed. Please log in again"});
+            }
+            const userId = info.id;
 
-        const comment = await Comment.create({
-            content,
-            author : userId,
-            post: postId
-        });
-        cache.del(`/post/${postId}/comments`);
-        res.json(comment);
+            const comment = await Comment.create({
+                content,
+                author : userId,
+                post: postId
+            });
+            cache.del(`/post/${postId}/comments`);
+            res.json(comment);
+        })
+      
     }catch (error){
         console.log(error);
         res.status(500).json({error: "Unable to add comment"});
@@ -369,6 +471,3 @@ app.delete('/comment/:commentId', async (req, res) => {
 
 
 app.listen(4000);
-
-
-
