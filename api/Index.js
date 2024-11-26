@@ -84,13 +84,13 @@ app.post('/register',async (req,res) => {
     
     try{
         if(!username || !password){
-            return res.status(400).json({message: "Username and Password are required"});
+            return res.status(400).json({errorCode:"40001", message: "Missing required fields", description: "Username and Password are required"});
         }
         if(username.length<6){
-            return res.status(400).json({messsage: "The username length should be greater than or equal to 6"});
+            return res.status(400).json({errorCode:"40002", message: "Invalid data format", description: "The username length should be greater than or equal to 6"});
         }
         if(password.length<8){
-            return res.status(400).json({message: "The password length should be greater than or equal to 8"});
+            return res.status(400).json({errorCode:"40003", message: "Invalid data format", message: "The password length should be greater than or equal to 8"});
         }
         const userData = await User.create({
             username,
@@ -113,7 +113,7 @@ app.put('/user/:userId',async (req,res) => {
     try{
         jwt.verify(token,secret,{},async (error,info) => {
             if(error){
-                return res.status(401).json({message: "Authentication failed. Please log in again"});
+                return res.status(401).json({errorCode: "40101", message: "Missing or invalid token", description: "Authentication failed. Please log in again"});
             }
             // if(info.role !== "admin"){
             //     return res.status(403).json({messge:"Not authorized to edit user accounts"});
@@ -121,12 +121,12 @@ app.put('/user/:userId',async (req,res) => {
             const userDoc = await User.findOne({_id: userId});
            
             if(!userDoc){
-                return res.status(404).json({message: "User not found for userId:" + userId});
+                return res.status(404).json({errorCode: "40401", message: "User Not found", description: "User not found for userId:" + userId});
             }
             const isAuthor = JSON.stringify(userDoc._id) === JSON.stringify(info.id);
             if(info.role !== "admin"){
                 if(!isAuthor){
-                    return res.status(403).json('You dont have the privilege to edit the user data');
+                    return res.status(403).json({errorCode: "40301", message: "Insufficent Privileges", description:"You dont have the privilege to edit the user data"});
                 }
             }
             await userDoc.updateOne({
@@ -150,17 +150,17 @@ const {userId} = req.params;
     try{
         jwt.verify(token,secret,{},async (error,info) => {
             if(error){
-                return res.status(401).json({message: "Authentication failed. Please log in again"});
+                return res.status(401).json({errorCode: "40101", message: "Missing or invalid token", description: "Authentication failed. Please log in again"});
             }
         if(info.role !== "admin"){
-          return res.status(403).json({message: "You dont have the privilege to delete user accounts"});
+            return res.status(403).json({errorCode: "40301", message: "Insufficent Privileges", description:"You dont have the privilege to edit the user data"});
         }
         const userDoc = User.findOne({_id: userId});
         if(!userDoc){
-            return res.status(404).json({message: "User not found"});
+            return res.status(404).json({errorCode: "40401", message: "User not found", description: "User not found for the user id"});
         }
         if(userDoc.role == "admin"){
-            return res.status(403).json({message: "Admin accounts cant be deleted"});
+            return res.status(403).json({errorCode: "40302", message:"Action not allowed", message: "Admin accounts cant be deleted"});
         }
        await userDoc.deleteOne({_id: userId})
         res.json({message: "Deleted"});
@@ -178,11 +178,11 @@ app.post('/login',async (req,res) => {
     const {username, password} = req.body;
     try{
         if(!username || !password){
-            return res.status(400).json({message: "Username and Password are required"});
+            return res.status(400).json({errorCode:"40001", message: "Missing required fields", description: "Username and Password are required"});
         }
         const userDoc = await User.findOne({username:username});
         if(!userDoc){
-            return res.status(404).json({message: "User Not Found"});
+            return res.status(404).json({errorCode: "40401", message: "User not found", description: "User not found for the user id"});
         }
         const passOk = bcrypt.compareSync(password, userDoc.password);
         if(passOk){
@@ -196,7 +196,7 @@ app.post('/login',async (req,res) => {
             });
         }
         else{
-            res.status(400).json("Wrong credentials");
+            res.status(400).json({errorCode:"40003",message:"Wrong credentials",description:"Incorrect username or password"});
         }
     }
     catch(e){
@@ -231,7 +231,7 @@ app.post('/post', async (req,res) => {
     try{
         jwt.verify(token,secret,{},async (error,info) => {
             if(error) {
-                return res.status(401).json({message: "Authentication failed. Please log in again"});
+                return res.status(401).json({errorCode: "40101", message: "Missing or invalid token", description: "Authentication failed. Please log in again"});
             }
             const {title, summary, content} = req.body;
         const postDoc = await Post.create({
@@ -269,7 +269,8 @@ app.put('/post', async (req, res) => {
     const{token} = req.cookies;
     jwt.verify(token,secret,{},async (error,info) => {
         if(error) {
-           return res.status(401).json({message: "Authentication failed. Please log in again"});
+            return res.status(401).json({errorCode: "40101", message: "Missing or invalid token", description: "Authentication failed. Please log in again"});
+          
         }
         const {postId, title, summary, content, cover} = req.body;
         const postDoc = await Post.findById(postId);
@@ -277,7 +278,7 @@ app.put('/post', async (req, res) => {
         console.log(info.role);
         if(info.role!=='admin'){
             if(!isAuthor){
-                return res.status(400).json('you are not the author or you dont have admin privilege');
+                return res.status(401).json({errorCode:"40102",message:"Unauthorized modification attempt",descrpton:"you are not the author or you dont have admin privilege"});
             }
         }
         
@@ -353,6 +354,9 @@ app.get('/post', cacheMiddleware, async (req, res) => {
 app.get('/post/:id', cacheMiddleware, async (req,res) => {
     const {id} = req.params;
     const postDoc = await Post.findById(id).populate('author',['username']);
+    if(!postDoc){
+        return res.status(404).json({errorCode:"40402", message:"Post not found", description:"Post with the given ID does not exist"});
+    }
     res.json(postDoc);
 })
 
@@ -362,6 +366,9 @@ app.delete('/post/:id', async (req, res) => {
     try {
         const decoded = jwt.verify(token, secret);
         const postDoc = await Post.findById(id);
+        if(!postDoc){
+            return res.status(404).json({errorCode:"40402", message:"Post not found", description:"Post with the given ID does not exist"});
+        }
         if (postDoc.author.toString() === decoded.id|| decoded.role === 'admin') {
             await postDoc.deleteOne();
             console.log(`Clearing cache for /post and /post/${id}`);
@@ -370,7 +377,7 @@ app.delete('/post/:id', async (req, res) => {
             clearPostCache();
             res.json({ success: true });
         } else {
-            res.status(403).json({ error: 'You are not the author of this post' });
+            res.status(403).json({ errorCode:"40303", message:"Insufficient access privilege", description: "You are not the author of this post" });
         }
     } catch (error) {
         console.log(error);
@@ -386,7 +393,7 @@ app.post('/post/:postId/comment', async (req,res) => {
         // const decoded = jwt.verify(token, secret);
         jwt.verify(token,secret,{},async (error,info) => {
             if(error) {
-                return res.status(401).json({message: "Authentication failed. Please log in again"});
+                return res.status(401).json({errorCode: "40101", message: "Missing or invalid token", description: "Authentication failed. Please log in again"});
             }
             const userId = info.id;
 
@@ -430,7 +437,7 @@ app.put('/comment/:commentId', async (req, res) => {
         const userId = decoded.id;
         const comment = await Comment.findById(commentId);
         if(!comment){
-            return res.status(404).json({ error: "Comment not found"});
+            return res.status(404).json({ errorCode:"40403",message:"Comment not found", description: "Comment not found for the given posId"});
         }
 
         if(comment.author.toString() === userId || decoded.role === 'admin'){
@@ -441,7 +448,7 @@ app.put('/comment/:commentId', async (req, res) => {
             res.json({success: true, comment});
         }
         else{
-            res.status(403).json({ error: 'Not authorized to update this comment' });
+            res.status(403).json({ errorCode:"40304", message:"Comment edit restriction", descripton: 'Not authorized to update this comment' });
         }
     } catch (error){
         console.error(error);
@@ -456,12 +463,14 @@ app.delete('/comment/:commentId', async (req, res) => {
     try {
         const decoded = jwt.verify(token, secret);
         const comment = await Comment.findById(commentId);
-
+        if(!comment){
+            return res.status(404).json({ errorCode:"40403",message:"Comment not found", description: "Comment not found for the given posId"});
+        }
         if (comment.author.toString() === decoded.id || decoded.role === 'admin') {
             await comment.deleteOne();
             res.json({ success: true });
         } else {
-            res.status(403).json({ error: 'Not authorized to delete this comment' });
+            res.status(403).json({ errorCode:"40304", message:"Comment edit restriction", description: "Not authorized to delete this comment" });
         }
     } catch (error) {
         console.error(error);
