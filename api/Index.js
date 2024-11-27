@@ -139,7 +139,13 @@ app.put('/user/:userId',async (req,res) => {
     }
     catch(e){
         console.log(e);
-        res.status(500).json(e);
+        if(e.name === "CastError"){
+            res.status(400).json({errorCode:"40004",message:"Invalid Id format", description:"The provided id is not in the standard id format"});
+        }
+        else{
+            res.status(500).json(e);
+        }
+        
     }
     
 });
@@ -168,7 +174,13 @@ const {userId} = req.params;
     }
     catch(e){
         console.log(e);
-        res.status(500).json(e);
+        if(e.name === "CastError"){
+            res.status(400).json({errorCode:"40004",message:"Invalid Id format", description:"The provided id is not in the standard id format"});
+        }
+        else{
+            res.status(500).json(e);
+        }
+        
     }
 })
 
@@ -353,11 +365,24 @@ app.get('/post', cacheMiddleware, async (req, res) => {
 
 app.get('/post/:id', cacheMiddleware, async (req,res) => {
     const {id} = req.params;
-    const postDoc = await Post.findById(id).populate('author',['username']);
-    if(!postDoc){
-        return res.status(404).json({errorCode:"40402", message:"Post not found", description:"Post with the given ID does not exist"});
+    try{
+        const postDoc = await Post.findOne({_id: id});
+        if(!postDoc){
+            return res.status(404).json({errorCode:"40402", message:"Post not found", description:"Post with the given ID does not exist"});
+        }
+        const postDoc1 = await Post.findById(id).populate('author',['username']);
+        res.json(postDoc1);
     }
-    res.json(postDoc);
+    catch(e){
+        console.log(e);
+        if(e.name === "CastError"){
+            res.status(400).json({errorCode:"40004",message:"Invalid Id format", description:"The provided id is not in the standard id format"});
+        }
+        else{
+        res.status(500).json(e);
+        }
+    }
+   
 })
 
 app.delete('/post/:id', async (req, res) => {
@@ -408,7 +433,13 @@ app.post('/post/:postId/comment', async (req,res) => {
       
     }catch (error){
         console.log(error);
-        res.status(500).json({error: "Unable to add comment"});
+        if(error.name === "CastError"){
+            res.status(400).json({errorCode:"40004",message:"Invalid Id format", description:"The provided id is not in the standard id format"});
+        }
+        else{
+            res.status(500).json({error: "Unable to add comment"});
+        }
+        
     }
 });
 
@@ -423,7 +454,13 @@ app.get('/post/:postId/comment', cacheMiddleware, async (req, res) => {
         res.json(comments);
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Unable to fetch comments' });
+        if(error.name === "CastError"){
+            res.status(400).json({errorCode:"40004",message:"Invalid Id format", description:"The provided id is not in the standard id format"});
+        }
+        else{
+            res.status(500).json({ error: 'Unable to fetch comments' });
+        }
+        
     }
 });
 
@@ -452,7 +489,13 @@ app.put('/comment/:commentId', async (req, res) => {
         }
     } catch (error){
         console.error(error);
-        res.status(500).json({ error: 'Unable to update comment' });
+        if(error.name === "CastError"){
+            res.status(400).json({errorCode:"40004",message:"Invalid Id format", description:"The provided id is not in the standard id format"});
+        }
+        else{
+            res.status(500).json({ error: 'Unable to update comment' });
+        }
+       
     }
 });
 
@@ -474,7 +517,13 @@ app.delete('/comment/:commentId', async (req, res) => {
         }
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Unable to delete comment' });
+        if(error.name === "CastError"){
+            res.status(400).json({errorCode:"40004",message:"Invalid Id format", description:"The provided id is not in the standard id format"});
+        }
+        else{
+            res.status(500).json({ error: 'Unable to delete comment' });
+        }
+       
     }
 });
 
